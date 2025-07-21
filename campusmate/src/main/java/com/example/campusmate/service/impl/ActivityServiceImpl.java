@@ -15,11 +15,23 @@ import java.util.Map;
 import java.util.HashMap;
 import com.example.campusmate.dto.ApplicationDetailDTO;
 import com.example.campusmate.entity.ActivityApplication;
+import com.example.campusmate.repository.ActivityApplicationRepository;
+import com.example.campusmate.repository.ActivityLikeRepository;
+import com.example.campusmate.repository.ActivityFavoriteRepository;
+import com.example.campusmate.repository.UserInfoRepository;
 
 @Service
 public class ActivityServiceImpl implements ActivityService {
     @Autowired
     private ActivityRepository activityRepository;
+    @Autowired
+    private ActivityApplicationRepository activityApplicationRepository;
+    @Autowired
+    private ActivityLikeRepository activityLikeRepository;
+    @Autowired
+    private ActivityFavoriteRepository activityFavoriteRepository;
+    @Autowired
+    private UserInfoRepository userInfoRepository;
 
     @Override
     public Activity createActivity(Activity activity) {
@@ -78,31 +90,101 @@ public class ActivityServiceImpl implements ActivityService {
 
     @Override
     public boolean applyForActivity(Long activityId, Long userId, String reason) {
-        // 简化实现
+        // 检查是否已申请
+        if (activityApplicationRepository.existsByActivityIdAndUserId(activityId, userId)) {
+            return false;
+        }
+        ActivityApplication app = new ActivityApplication();
+        app.setActivityId(activityId);
+        app.setUserId(userId);
+        app.setReason(reason);
+        app.setStatus("PENDING");
+        app.setCreatedAt(LocalDateTime.now());
+        app.setUpdatedAt(LocalDateTime.now());
+        activityApplicationRepository.save(app);
         return true;
     }
 
     @Override
     public List<ApplicationDetailDTO> listApplications(Long activityId) {
-        // 简化实现
-        return new java.util.ArrayList<>();
+        List<ActivityApplication> apps = activityApplicationRepository.findByActivityId(activityId);
+        List<ApplicationDetailDTO> dtos = new java.util.ArrayList<>();
+        Activity activity = activityRepository.findById(activityId).orElse(null);
+        for (ActivityApplication app : apps) {
+            ApplicationDetailDTO dto = new ApplicationDetailDTO();
+            dto.setId(app.getId());
+            dto.setActivityId(app.getActivityId());
+            dto.setUserId(app.getUserId());
+            dto.setReason(app.getReason());
+            dto.setStatus(app.getStatus());
+            dto.setCreatedAt(app.getCreatedAt());
+            dto.setUpdatedAt(app.getUpdatedAt());
+            // 用户信息
+            var user = userInfoRepository.findByUserId(app.getUserId());
+            if (user != null) {
+                dto.setStudentId(user.getStudentId());
+                dto.setCollege(user.getCollege());
+                dto.setCampus(user.getCampus());
+                dto.setMajor(user.getMajor());
+                dto.setGrade(user.getGrade());
+                dto.setSignature(user.getSignature());
+                dto.setInterests(user.getInterests());
+                dto.setSkills(user.getSkills());
+                dto.setAvatarUrl(user.getAvatarUrl());
+            }
+            // 活动信息
+            if (activity != null) {
+                dto.setActivityTitle(activity.getTitle());
+                dto.setActivityType(activity.getType());
+                dto.setActivityTime(activity.getActivityTime());
+                dto.setActivityLocation(activity.getLocation());
+            }
+            dtos.add(dto);
+        }
+        return dtos;
     }
 
     @Override
     public boolean handleApplication(Long appId, String action) {
-        // 简化实现
+        ActivityApplication app = activityApplicationRepository.findById(appId).orElse(null);
+        if (app == null) return false;
+        if ("ACCEPT".equalsIgnoreCase(action)) {
+            app.setStatus("ACCEPTED");
+        } else if ("REJECT".equalsIgnoreCase(action)) {
+            app.setStatus("REJECTED");
+        } else {
+            return false;
+        }
+        app.setUpdatedAt(LocalDateTime.now());
+        activityApplicationRepository.save(app);
         return true;
     }
 
     @Override
     public boolean likeActivity(Long activityId, Long userId) {
-        // 简化实现
+        // 检查是否已点赞
+        if (activityLikeRepository.existsByActivityIdAndUserId(activityId, userId)) {
+            return false;
+        }
+        com.example.campusmate.entity.ActivityLike like = new com.example.campusmate.entity.ActivityLike();
+        like.setActivityId(activityId);
+        like.setUserId(userId);
+        like.setCreatedAt(LocalDateTime.now());
+        activityLikeRepository.save(like);
         return true;
     }
     
     @Override
     public boolean favoriteActivity(Long activityId, Long userId) {
-        // 简化实现
+        // 检查是否已收藏
+        if (activityFavoriteRepository.existsByActivityIdAndUserId(activityId, userId)) {
+            return false;
+        }
+        com.example.campusmate.entity.ActivityFavorite fav = new com.example.campusmate.entity.ActivityFavorite();
+        fav.setActivityId(activityId);
+        fav.setUserId(userId);
+        fav.setCreatedAt(LocalDateTime.now());
+        activityFavoriteRepository.save(fav);
         return true;
     }
     
@@ -113,36 +195,46 @@ public class ActivityServiceImpl implements ActivityService {
     
     @Override
     public List<ActivityApplication> getUserApplications(Long userId) {
-        // 简化实现
-        return new java.util.ArrayList<>();
+        return activityApplicationRepository.findByUserId(userId);
     }
     
     @Override
     public long getActivityApplicationCount(Long activityId) {
-        // 简化实现
-        return 0;
+        return activityApplicationRepository.countByActivityId(activityId);
     }
     
     @Override
     public long getPendingApplicationCount(Long activityId) {
-        // 简化实现
-        return 0;
+        return activityApplicationRepository.countByActivityIdAndStatus(activityId, "PENDING");
     }
     
     @Override
     public Map<String, Object> getActivityStats(Long activityId) {
-        // 简化实现
-        return new HashMap<>();
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("applicationCount", activityApplicationRepository.countByActivityId(activityId));
+        stats.put("pendingApplicationCount", activityApplicationRepository.countByActivityIdAndStatus(activityId, "PENDING"));
+        stats.put("likeCount", activityLikeRepository.countByActivityId(activityId));
+        stats.put("favoriteCount", activityFavoriteRepository.countByActivityId(activityId));
+        return stats;
     }
     
     @Override
     public void handleExpiredActivities() {
-        // 简化实现
+        // 查找已过期且未标记为EXPIRED的活动
+        List<Activity> expired = activityRepository.findExpiredActivities(LocalDateTime.now());
+        for (Activity act : expired) {
+            if (!"EXPIRED".equals(act.getStatus())) {
+                act.setStatus("EXPIRED");
+                act.setUpdatedAt(LocalDateTime.now());
+                activityRepository.save(act);
+            }
+        }
     }
     
     @Override
     public boolean isActivityExpired(Long activityId) {
-        // 简化实现
-        return false;
+        Activity act = activityRepository.findById(activityId).orElse(null);
+        if (act == null) return false;
+        return act.getExpireTime() != null && act.getExpireTime().isBefore(LocalDateTime.now());
     }
 }
