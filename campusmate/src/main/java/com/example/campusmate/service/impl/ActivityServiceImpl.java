@@ -19,6 +19,7 @@ import com.example.campusmate.repository.ActivityApplicationRepository;
 import com.example.campusmate.repository.ActivityLikeRepository;
 import com.example.campusmate.repository.ActivityFavoriteRepository;
 import com.example.campusmate.repository.UserInfoRepository;
+import com.example.campusmate.entity.UserInfo;
 
 @Service
 public class ActivityServiceImpl implements ActivityService {
@@ -42,16 +43,19 @@ public class ActivityServiceImpl implements ActivityService {
 
     @Override
     public List<Activity> listActivities(String campus, String college, String type, int page, int size) {
-        // 实现分页和筛选功能
+        return List.of();
+    }
+
+    @Override
+    public Page<Activity> listActivitiesWithPage(String campus, String college, String type, int page, int size) {
         Pageable pageable = PageRequest.of(page - 1, size);
         
         // 如果所有筛选条件都为空，返回所有活动
         if ((campus == null || campus.isEmpty() || campus.equals("all")) && 
             (college == null || college.isEmpty() || college.equals("all")) && 
             (type == null || type.isEmpty() || type.equals("all"))) {
-            Page<Activity> activityPage = activityRepository.findActivitiesWithFilters(
+            return activityRepository.findActivitiesWithFilters(
                 null, null, null, "PUBLISHED", pageable);
-            return activityPage.getContent();
         }
         
         // 构建筛选条件，使用更灵活的方法
@@ -61,16 +65,17 @@ public class ActivityServiceImpl implements ActivityService {
         
         // 特殊处理学院筛选：当选择特定学院时，也要包含"全部学院"的活动
         if (collegeFilter != null) {
-            // 使用自定义查询来处理"全部学院"的情况
-            Page<Activity> activityPage = activityRepository.findActivitiesWithCollegeFilter(
+            return activityRepository.findActivitiesWithCollegeFilter(
                 campusFilter, collegeFilter, typeFilter, "PUBLISHED", pageable);
-            return activityPage.getContent();
         }
-        
+        // 特殊处理类型筛选：当选择特定类型时，也要包含"全部类型"的活动
+        if (typeFilter != null) {
+            return activityRepository.findActivitiesWithTypeFilter(
+                campusFilter, collegeFilter, typeFilter, "PUBLISHED", pageable);
+        }
         // 使用模糊匹配的筛选方法
-        Page<Activity> activityPage = activityRepository.findActivitiesWithFuzzyFilters(
+        return activityRepository.findActivitiesWithFuzzyFilters(
             campusFilter, collegeFilter, typeFilter, "PUBLISHED", pageable);
-        return activityPage.getContent();
     }
 
     @Override
@@ -89,8 +94,11 @@ public class ActivityServiceImpl implements ActivityService {
     }
 
     @Override
-    public boolean applyForActivity(Long activityId, Long userId, String reason) {
-        // 检查是否已申请
+    public boolean applyForActivity(Long activityId, String studentId, String reason) {
+        // 通过学号查userId
+        UserInfo user = userInfoRepository.findByStudentId(studentId);
+        if (user == null) return false;
+        Long userId = user.getUserId();
         if (activityApplicationRepository.existsByActivityIdAndUserId(activityId, userId)) {
             return false;
         }
@@ -161,8 +169,10 @@ public class ActivityServiceImpl implements ActivityService {
     }
 
     @Override
-    public boolean likeActivity(Long activityId, Long userId) {
-        // 检查是否已点赞
+    public boolean likeActivity(Long activityId, String studentId) {
+        UserInfo user = userInfoRepository.findByStudentId(studentId);
+        if (user == null) return false;
+        Long userId = user.getUserId();
         if (activityLikeRepository.existsByActivityIdAndUserId(activityId, userId)) {
             return false;
         }
@@ -175,8 +185,10 @@ public class ActivityServiceImpl implements ActivityService {
     }
     
     @Override
-    public boolean favoriteActivity(Long activityId, Long userId) {
-        // 检查是否已收藏
+    public boolean favoriteActivity(Long activityId, String studentId) {
+        UserInfo user = userInfoRepository.findByStudentId(studentId);
+        if (user == null) return false;
+        Long userId = user.getUserId();
         if (activityFavoriteRepository.existsByActivityIdAndUserId(activityId, userId)) {
             return false;
         }
@@ -189,13 +201,17 @@ public class ActivityServiceImpl implements ActivityService {
     }
     
     @Override
-    public List<Activity> getUserCreatedActivities(Long userId) {
-        return activityRepository.findByCreatorId(userId);
+    public List<Activity> getUserCreatedActivities(String studentId) {
+        UserInfo user = userInfoRepository.findByStudentId(studentId);
+        if (user == null) return new java.util.ArrayList<>();
+        return activityRepository.findByCreatorId(user.getUserId());
     }
     
     @Override
-    public List<ActivityApplication> getUserApplications(Long userId) {
-        return activityApplicationRepository.findByUserId(userId);
+    public List<ActivityApplication> getUserApplications(String studentId) {
+        UserInfo user = userInfoRepository.findByStudentId(studentId);
+        if (user == null) return new java.util.ArrayList<>();
+        return activityApplicationRepository.findByUserId(user.getUserId());
     }
     
     @Override

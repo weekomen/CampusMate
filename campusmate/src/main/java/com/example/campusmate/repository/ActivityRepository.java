@@ -133,15 +133,30 @@ public interface ActivityRepository extends JpaRepository<Activity, Long> {
     List<Activity> findByCollegeAndCampus(String college, String campus);
     
     /**
-     * 分页查询活动（支持学院筛选，包含"全部学院"的活动）
-     * 当选择特定学院时，也会显示college为null、空字符串或"全部学院"的活动
+     * 分页查询活动（支持学院筛选，仅查选中学院的活动）
      */
     @Query("SELECT a FROM Activity a WHERE " +
            "(:campus IS NULL OR a.campus = :campus) AND " +
-           "(:college IS NULL OR a.college = :college OR a.college IS NULL OR a.college = '' OR a.college = '全部学院') AND " +
+           "(:college IS NULL OR a.college = :college) AND " +
            "(:type IS NULL OR a.type = :type) AND " +
            "(:status IS NULL OR a.status = :status)")
     Page<Activity> findActivitiesWithCollegeFilter(
+            @Param("campus") String campus,
+            @Param("college") String college,
+            @Param("type") String type,
+            @Param("status") String status,
+            Pageable pageable);
+    
+    /**
+     * 分页查询活动（支持类型筛选，包含"全部类型"的活动）
+     * 当选择特定类型时，也会显示type为null、空字符串或"全部类型"的活动
+     */
+    @Query("SELECT a FROM Activity a WHERE " +
+           "(:campus IS NULL OR a.campus = :campus) AND " +
+           "(:college IS NULL OR a.college = :college) AND " +
+           "(:type IS NULL OR a.type = :type OR a.type IS NULL OR a.type = '' OR a.type = '全部类型') AND " +
+           "(:status IS NULL OR a.status = :status)")
+    Page<Activity> findActivitiesWithTypeFilter(
             @Param("campus") String campus,
             @Param("college") String college,
             @Param("type") String type,

@@ -3,6 +3,7 @@ package com.example.campusmate.service;
 import com.example.campusmate.entity.Activity;
 import com.example.campusmate.entity.ActivityApplication;
 import com.example.campusmate.dto.ApplicationDetailDTO;
+import org.springframework.data.domain.Page;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +30,11 @@ public interface ActivityService {
     List<Activity> listActivities(String campus, String college, String type, int page, int size);
 
     /**
+     * 分页获取活动列表（带筛选）
+     */
+    Page<Activity> listActivitiesWithPage(String campus, String college, String type, int page, int size);
+
+    /**
      * 获取活动详情
      * @param activityId 活动ID
      * @return 活动详情
@@ -45,11 +51,11 @@ public interface ActivityService {
     /**
      * 申请成为搭子
      * @param activityId 活动ID
-     * @param userId 申请人ID
+     * @param studentId 申请人学号
      * @param reason 申请理由
      * @return 是否成功
      */
-    boolean applyForActivity(Long activityId, Long userId, String reason);
+    boolean applyForActivity(Long activityId, String studentId, String reason);
 
     /**
      * 获取活动的申请列表
@@ -69,32 +75,32 @@ public interface ActivityService {
     /**
      * 点赞活动
      * @param activityId 活动ID
-     * @param userId 用户ID
+     * @param studentId 学号
      * @return 是否成功
      */
-    boolean likeActivity(Long activityId, Long userId);
+    boolean likeActivity(Long activityId, String studentId);
     
     /**
      * 收藏活动
      * @param activityId 活动ID
-     * @param userId 用户ID
+     * @param studentId 学号
      * @return 是否成功
      */
-    boolean favoriteActivity(Long activityId, Long userId);
+    boolean favoriteActivity(Long activityId, String studentId);
     
     /**
      * 获取用户创建的活动列表
-     * @param userId 用户ID
+     * @param studentId 学号
      * @return 活动列表
      */
-    List<Activity> getUserCreatedActivities(Long userId);
+    List<Activity> getUserCreatedActivities(String studentId);
     
     /**
      * 获取用户申请的活动列表
-     * @param userId 用户ID
+     * @param studentId 学号
      * @return 申请列表
      */
-    List<ActivityApplication> getUserApplications(Long userId);
+    List<ActivityApplication> getUserApplications(String studentId);
     
     /**
      * 获取活动的申请数量

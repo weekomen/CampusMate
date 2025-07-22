@@ -13,4 +13,11 @@ public interface UserInfoRepository extends JpaRepository<UserInfo, Long> {
      * @return 用户信息
      */
     UserInfo findByUserId(Long userId);
+
+    /**
+     * 根据学号查询用户信息
+     * @param studentId 学号
+     * @return 用户信息
+     */
+    UserInfo findByStudentId(String studentId);
 }

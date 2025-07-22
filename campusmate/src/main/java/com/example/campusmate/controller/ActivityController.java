@@ -5,11 +5,15 @@ import com.example.campusmate.entity.ActivityApplication;
 import com.example.campusmate.service.ActivityService;
 import com.example.campusmate.dto.ApplicationDetailDTO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import com.example.campusmate.dto.ApiResponse;
+import org.springframework.data.domain.Page;
+
+import com.example.campusmate.Utils.UidUtils;
 
 @RestController
 @RequestMapping("/api/activities")
@@ -26,14 +30,14 @@ public class ActivityController {
     }
 
     @GetMapping
-    public ApiResponse<List<Activity>> listActivities(
+    public ApiResponse<Page<Activity>> listActivities(
             @RequestParam(required = false) String campus, // 允许前端传递校区参数，非必填
             @RequestParam(required = false) String college, // 允许前端传递学院参数，非必填
             @RequestParam(required = false) String type,   // 允许前端传递活动类型参数，非必填
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
-        List<Activity> list = activityService.listActivities(campus, college, type, page, size);
-        return ApiResponse.success(list);
+        Page<Activity> activityPage = activityService.listActivitiesWithPage(campus, college, type, page, size);
+        return ApiResponse.success(activityPage);
     }
 
     @GetMapping("/{activityId}")
@@ -49,8 +53,9 @@ public class ActivityController {
     }
 
     @PostMapping("/{activityId}/apply")
-    public ApiResponse<Boolean> applyForActivity(@PathVariable Long activityId, @RequestParam Long userId, @RequestParam String reason) {
-        boolean result = activityService.applyForActivity(activityId, userId, reason);
+    public ApiResponse<Boolean> applyForActivity(@PathVariable Long activityId, @RequestParam String reason) {
+        String studentId = UidUtils.getUsernameFromSecurityContext();
+        boolean result = activityService.applyForActivity(activityId, studentId, reason);
         return ApiResponse.success(result);
     }
 
@@ -72,15 +77,17 @@ public class ActivityController {
         return ApiResponse.success(result);
     }
     
-    @GetMapping("/user/{userId}/created")
-    public ApiResponse<List<Activity>> getUserCreatedActivities(@PathVariable Long userId) {
-        List<Activity> activities = activityService.getUserCreatedActivities(userId);
+    @GetMapping("/user/created")
+    public ApiResponse<List<Activity>> getUserCreatedActivities() {
+        String studentId = UidUtils.getUsernameFromSecurityContext();
+        List<Activity> activities = activityService.getUserCreatedActivities(studentId);
         return ApiResponse.success(activities);
     }
     
-    @GetMapping("/user/{userId}/applications")
-    public ApiResponse<List<ActivityApplication>> getUserApplications(@PathVariable Long userId) {
-        List<ActivityApplication> applications = activityService.getUserApplications(userId);
+    @GetMapping("/user/applications")
+    public ApiResponse<List<ActivityApplication>> getUserApplications() {
+        String studentId = UidUtils.getUsernameFromSecurityContext();
+        List<ActivityApplication> applications = activityService.getUserApplications(studentId);
         return ApiResponse.success(applications);
     }
     
@@ -90,14 +97,16 @@ public class ActivityController {
         return ApiResponse.success(stats);
     }
     @PostMapping("/{activityId}/like")
-    public ApiResponse<Boolean> likeActivity(@PathVariable Long activityId, @RequestParam Long userId) {
-        boolean result = activityService.likeActivity(activityId, userId);
+    public ApiResponse<Boolean> likeActivity(@PathVariable Long activityId) {
+        String studentId = UidUtils.getUsernameFromSecurityContext();
+        boolean result = activityService.likeActivity(activityId, studentId);
         return ApiResponse.success(result);
     }
 
     @PostMapping("/{activityId}/favorite")
-    public ApiResponse<Boolean> favoriteActivity(@PathVariable Long activityId, @RequestParam Long userId) {
-        boolean result = activityService.favoriteActivity(activityId, userId);
+    public ApiResponse<Boolean> favoriteActivity(@PathVariable Long activityId) {
+        String studentId = UidUtils.getUsernameFromSecurityContext();
+        boolean result = activityService.favoriteActivity(activityId, studentId);
         return ApiResponse.success(result);
     }
 
